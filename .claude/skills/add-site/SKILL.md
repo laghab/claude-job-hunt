@@ -18,7 +18,7 @@ Through the Playwright MCP, search and apply to 1–2 fitting listings. Write a 
 - `scripts/<site>_apply.js`: `async (page, {ids, deadline}) => [...]`.
 
 Conventions:
-- Read answers from `answers.md`. Never hard-code personal values.
+- Take answers from `ARGS.a` (the `## Form values` block of `answers.md`, injected by `build_run_all.py` and `mk_*.sh`). Never hard-code personal values; add a key instead.
 - `page.setDefaultTimeout(8000)`, try/catch per job, stop at `deadline`.
 - Filter on role and minimum years, not just keywords.
 - One line per job: `APPLIED`, `skip: <reason>`, `defer: <reason>` (not fresh), `pending: <what's needed>`.
@@ -27,7 +27,7 @@ Conventions:
 - Never `.last()` on text inputs.
 
 ## 3. Wire it in
-Add it to `scripts/run_all.js`: one tab per site, all with `Promise.all`, shared deadline under 50 min (the MCP drops calls at ~55 min). Ids already in `applied.md` / `skipped.txt` are filtered before applying.
+Add a block to `scripts/build_run_all.py` (it generates `scripts/run_all.js`): one tab per site, all with `Promise.all`, shared deadline under 50 min (the MCP drops calls at ~55 min). Ids already in `applied.md` / `skipped.txt` are filtered before applying.
 
 ## 4. Test
 Collect only first and check the output by eye. Then apply to 2–3 jobs and confirm each one on the site.

@@ -5,7 +5,7 @@ Machine-specific facts (browser path, mail folder IDs) live in `CLAUDE.local.md`
 
 ## Files
 - `profile.md`: what the user wants. The filter for every listing.
-- `answers.md`: the only answers allowed in forms.
+- `answers.md`: the only answers allowed in forms. Its `## Form values` JSON block feeds the scripts.
 - `PLAYBOOK.md`: per-site selectors, scripts and gotchas. One section per site; edit lines instead of appending.
 - `sites.md`: account and profile state per site.
 - `applied.md` (every application), `skipped.txt` (permanent rejects), `outcomes.md` (real replies), `log.md` (one line per run).

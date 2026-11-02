@@ -14,6 +14,19 @@ You stay in charge of logins, captchas and anything sent to a person. Claude onl
 
 Rules live in [`CLAUDE.md`](CLAUDE.md), one place each. Skills are in [`.claude/skills/`](.claude/skills) and load only when used.
 
+## Scripts
+
+Working collectors and apply scripts for LinkedIn (Easy Apply), Naukri, Hirist, Instahyre, Wellfound, Cutshort, plus collect-only Simplify and WeWorkRemotely. No personal values in code: everything comes from the `## Form values` JSON block in your `answers.md`, injected at build time.
+
+```sh
+python3 -I scripts/linkedin_collect.py > li.tsv          # no browser
+python3 -I scripts/build_run_all.py --li li.tsv --dry    # collect only; drop --dry to apply
+# then in Claude Code: browser_run_code_unsafe filename=scripts/run_all.js
+node tests/answers_test.js                               # what each script would answer to sample questions
+```
+
+The search keywords and role filters are tuned for junior DevOps / cloud / support roles in India and the UAE. Change the keyword lists and `want`/`bad` regexes at the top of each collector for other roles; `/add-site` covers new sites.
+
 ## Quick start
 
 Needs: [Claude Code](https://claude.com/claude-code), Node 18+, Python 3, a Chromium browser (Brave, Chrome, Chromium).

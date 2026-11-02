@@ -16,3 +16,4 @@ browser-profile/
 .playwright/
 .env*
 node_modules/
+scripts/run*.js
