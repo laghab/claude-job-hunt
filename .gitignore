@@ -1,0 +1,18 @@
+# personal data: remove these lines only in a PRIVATE copy
+/profile.md
+/answers.md
+/sites.md
+/applied.md
+/outcomes.md
+/log.md
+/skipped.txt
+/ranked/
+/tailored/
+resume/*
+!resume/.gitkeep
+/CLAUDE.local.md
+# logins and page snapshots (OTP mails, personal pages)
+browser-profile/
+.playwright/
+.env*
+node_modules/
