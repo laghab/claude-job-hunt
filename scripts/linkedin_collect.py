@@ -1,5 +1,5 @@
-# LinkedIn guest-API collector (no browser): Easy Apply, last 48h, junior DevOps/cloud/support roles,
-# India / UAE / remote-anywhere only, listing minimum <= 1 yr. Prints tier\tid\ttitle\tcompany\tloc\tapplicants\tposted.
+# LinkedIn guest-API collector (no browser): Easy Apply, last 48h. Roles, keywords and places come from the
+# `search` block in answers.md (--intern: internships). Prints tier\tid\ttitle\tcompany\tloc\tapplicants\tposted.
 # Tier 1 = <100 applicants, not reposted, < 2 days old. Parallel requests keep it to a few minutes.
 import re, os, sys, time, json, urllib.request, urllib.parse, html, importlib.util
 from concurrent.futures import ThreadPoolExecutor
@@ -8,14 +8,21 @@ _spec = importlib.util.spec_from_file_location('answers', os.path.join(os.path.d
 _ans = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_ans)
 MAX_MIN = _ans.load()['max_min_years']  # answers.md form values
 applied = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'applied.md')).read()
-KW = ['devops', 'devops engineer', 'junior devops', 'cloud engineer', 'site reliability engineer', 'sre',
-      'platform engineer', 'linux administrator', 'system administrator', 'technical support engineer',
-      'cloud support engineer', 'noc engineer', 'production support engineer', 'application support engineer',
-      'build release engineer', 'jenkins', 'gcp', 'it support engineer', 'infrastructure engineer']
-LOCS = [('India', '&f_WT=2'), ('India', ''), ('United%20Arab%20Emirates', ''), ('Worldwide', '&f_WT=2')]
-OKLOC = re.compile(r'India|United Arab Emirates|Dubai|Abu Dhabi|Sharjah|^\s*(Worldwide|Remote|Anywhere)\s*$', re.I)  # India, UAE, remote-anywhere only
-want = re.compile(r'devops|dev ops|cloud|sre|site reliability|linux|unix|system ?admin|systems? engineer|infrastructure|noc|support engineer|support analyst|technical support|it support|production support|application support|build|release|jenkins|kubernetes|platform engineer|operations engineer|ci/?cd', re.I)
-bad = re.compile(r'senior|sr\.|\bsr\b|lead|manager|architect|principal|head|director|staff|\bvp\b|sales|recruit|java|\.net|frontend|full ?stack|data engineer|data scien|\bqa\b|tester|test engineer|sap\b|oracle|salesforce|mainframe|embedded|intern|ii\b|iii\b|\b[3-9]\+? ?years', re.I)
+A = _ans.load()
+S = A.get('search') or {}
+INTERN = '--intern' in sys.argv  # internships / trainee roles (search.intern_keywords)
+KW = S.get('intern_keywords' if INTERN else 'keywords') or []
+if not KW or not S.get('role_regex'):
+    sys.exit('answers.md search block is empty: fill search.keywords / role_regex (the setup skill does this from the resume)')
+EXP = '1' if INTERN else '1,2,3'  # LinkedIn experience levels: 1 internship, 2 entry, 3 associate
+SENIOR = r'senior|sr\.|\bsr\b|lead|manager|architect|principal|head|director|staff|\bvp\b|\bii\b|\biii\b|\b[3-9]\+? ?years'
+want = re.compile(r'intern|trainee|apprentice|fresher|graduate' if INTERN else S['role_regex'], re.I)
+TECH = re.compile(S.get('intern_field_regex') or S['role_regex'], re.I)  # internships: field must match
+bad = re.compile('|'.join(x for x in [SENIOR] + ([S.get('intern_exclude_regex')] if INTERN else [S.get('exclude_regex'), 'intern']) if x), re.I)
+# location search params: each country (on-site + remote) plus remote-anywhere if allowed
+LOCS = [(urllib.parse.quote(c), wt) for c in S.get('countries', []) for wt in ('&f_WT=2', '')]
+if S.get('remote_anywhere'): LOCS.append(('Worldwide', '&f_WT=2'))
+OKLOC = re.compile(S.get('location_regex') or '|'.join(map(re.escape, S.get('countries', []))) + (r'|^\s*(Worldwide|Remote|Anywhere)\s*$' if S.get('remote_anywhere') else ''), re.I)
 UA = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126 Safari/537.36'}
 
 def get(url):
@@ -29,8 +36,8 @@ def get(url):
 seen = {}
 def search(args):
     kw, loc, wt, start = args
-    u = ('https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=%s&location=%s&f_AL=true&f_E=1,2,3&f_TPR=r172800%s&start=%d'
-         % (urllib.parse.quote(kw), loc, wt, start))
+    u = ('https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=%s&location=%s&f_AL=true&f_E=%s&f_TPR=r172800%s&start=%d'
+         % (urllib.parse.quote(kw), loc, EXP, wt, start))
     h = get(u)
     return re.findall(r'data-entity-urn="urn:li:jobPosting:(\d+)"[\s\S]*?base-search-card__title">\s*([^<]+?)\s*<[\s\S]*?base-search-card__subtitle">[\s\S]*?>\s*([^<]+?)\s*<[\s\S]*?job-search-card__location">\s*([^<]+?)\s*<', h)
 tasks = [(kw, loc, wt, start) for kw in KW for loc, wt in LOCS for start in (0, 25)]
@@ -56,7 +63,7 @@ def min_years(page):
 
 def detail(item):
     jid, (t, c, l) = item
-    if jid in applied or not want.search(t) or bad.search(t) or not OKLOC.search(l):
+    if jid in applied or not want.search(t) or bad.search(t) or not OKLOC.search(l) or (INTERN and not TECH.search(t)):
         return None
     d = get('https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/' + jid)
     app = re.search(r'num-applicants__caption[^>]*>\s*([^<]+?)\s*<', d)

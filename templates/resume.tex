@@ -1,0 +1,73 @@
+% One-page resume template used by the `resume` skill. Copy to resume/resume.tex and fill in.
+% Build:  public copy (no phone) -> pdflatex -interaction=nonstopmode resume.tex
+%         job-site copy (phone)  -> pdflatex -interaction=nonstopmode "\def\withphone{}\input{resume.tex}"
+% Plain single column, real text (no images or tables for layout), so ATS parsers read it cleanly.
+\documentclass[10pt,a4paper]{article}
+
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{lmodern}
+\else
+  \usepackage{fontspec}
+\fi
+\usepackage[margin=0.6in]{geometry}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{heading}{RGB}{38,77,128}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+\titleformat{\section}{\large\bfseries\color{heading}}{}{0pt}{}[\vspace{0.2ex}{\color{black}\titlerule}]
+\titlespacing*{\section}{0pt}{2.3ex}{1.75ex}
+\setlist[itemize]{leftmargin=1.2em,itemsep=2pt,topsep=4pt,parsep=0pt}
+
+% \role{title, company}{dates}{one-line context}   \project{name}{link or context}
+\newcommand{\role}[3]{\textbf{#1}\hfill\textit{#2}\par\textit{#3}\par}
+\newcommand{\project}[2]{\textbf{#1}\hfill\textit{#2}\par}
+\newcommand{\sep}{\hspace{8.3pt}|\hspace{5pt}}
+
+\begin{document}
+
+\begin{center}
+  {\fontsize{24}{28}\selectfont\bfseries Full Name}\\[1.1ex]
+  {\large Target Title}\\[0.9ex]
+  \ifdefined\withphone
+    \href{mailto:you@example.com}{you@example.com}\sep +00-0000000000\sep
+    \href{https://example.com}{example.com}\\
+  \else
+    \href{mailto:you@example.com}{you@example.com}\sep \href{https://example.com}{example.com}\sep
+  \fi
+  \href{https://github.com/you}{github.com/you}\sep
+  \href{https://www.linkedin.com/in/you}{linkedin.com/in/you}
+\end{center}
+\vspace{-2.3ex}
+
+\section*{Summary}
+Two to four sentences: what you do, the tools you have really used (the keywords recruiters search for), your strongest concrete result, and availability (e.g. immediate joiner, open to relocation).
+
+\section*{Skills}
+\begin{itemize}[label={},leftmargin=1.2em,itemsep=3pt]
+  \item \textbf{Area:} Tool, tool, tool (only what you have used for real)
+  \item \textbf{Learning:} Tools you are learning, kept apart so nobody mistakes them for experience
+\end{itemize}
+
+\section*{Experience}
+\role{Job Title, Company}{Mon YYYY -- Mon YYYY}{One line of context: team size, your scope.}
+\begin{itemize}
+  \item Verb first: what you built or ran, with which tools, and the result (numbers only if they are real).
+  \item One idea per bullet, at most two lines.
+\end{itemize}
+
+\section*{Projects}
+\project{Project name}{\href{https://github.com/you/project}{github.com/you/project}}
+What it does and what you did, in one or two sentences.
+
+\section*{Education}
+\textbf{Degree or course, Institution} (status, e.g. pursuing)\hfill\textit{YYYY -- YYYY}
+
+\end{document}

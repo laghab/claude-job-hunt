@@ -6,6 +6,7 @@
 /outcomes.md
 /log.md
 /skipped.txt
+/outreach.md
 /ranked/
 /tailored/
 resume/*
@@ -17,3 +18,4 @@ browser-profile/
 .env*
 node_modules/
 scripts/run*.js
+__pycache__/

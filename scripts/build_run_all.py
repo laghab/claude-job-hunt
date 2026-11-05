@@ -10,7 +10,7 @@ import argparse, importlib.util, json, os, re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-ALL_SITES = ['naukri', 'hirist', 'wellfound', 'instahyre', 'cutshort', 'linkedin', 'simplify']
+ALL_SITES = ['naukri', 'hirist', 'wellfound', 'instahyre', 'cutshort', 'linkedin', 'simplify', 'amazon']
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--minutes', type=int, default=40)
@@ -18,6 +18,7 @@ ap.add_argument('--li', default='')
 ap.add_argument('--sites', default=','.join(ALL_SITES))
 ap.add_argument('--tier2', action='store_true')
 ap.add_argument('--dry', action='store_true')
+ap.add_argument('--no-amazon-submit', action='store_true')
 a = ap.parse_args()
 sites = [s for s in a.sites.split(',') if s]
 
@@ -37,6 +38,7 @@ known = sorted(set(re.findall(r'naukri\.com/job-listings-\S*?(\d{12})\b', applie
                | set(re.findall(r'hirist\.tech/j/\S*?-(\d{6,8})\b', applied))
                | set(re.findall(r'wellfound\.com/jobs/(\d+)', applied))
                | set(re.findall(r'instahyre\.com/job-(\d+)', applied))
+               | set(re.findall(r'amazon\.jobs/(?:en(?:-[a-z]{2})?/)?jobs/(\d{6,9})\b', applied))
                | set(re.findall(r'simplify\.jobs/p/([0-9a-f-]{36})', applied)))
 
 skip_path = os.path.join(ROOT, 'skipped.txt')  # ids that failed for permanent reasons (degree, 4+ yrs, off-profile, closed)
@@ -76,6 +78,12 @@ blocks = {
     'cutshort': f"""tab('cutshort', async p => DRY ? 'dry: cutshort scans and applies in one pass, skipped' : ({js('cutshort_apply.js')})(p, {{max: 30, deadline: DEADLINE, a: A}}))""",
     # Simplify = aggregator: collect only, output goes to the company-site queue (apply happens on the ATS)
     'simplify': f"""tab('simplify', async p => ({js('simplify_collect.js')})(p, {{known: KNOWN, a: A, deadline: DEADLINE, maxDays: {7 if a.tier2 else 2} }}))""",
+    'amazon': f"""tab('amazon', async p => {{
+      const c = await ({js('amazon_collect.js')})(p, {{a: A, maxDays: {7 if a.tier2 else 2}}});
+      const ids = c.out.map(l => l.split(' || ')[0]).filter(s => !KNOWN.has(s));
+      const auth = (A.search || {{}}).authorized_iso3 || []; const uae = c.out.filter(l => !auth.includes(l.slice(-3))).map(l => l.split(' || ')[0]); // abroad: needs sponsorship
+      return DRY ? {{found: ids, total: c.total}} : {{found: ids.length, res: await ({js('amazon_apply.js')})(p, {{ids, uae, deadline: DEADLINE, a: A, submit: {json.dumps(not a.no_amazon_submit)}, resume: {json.dumps(os.path.join(ROOT, 'resume', ANSWERS.get('resume_file') or 'resume.pdf'))}}})}};
+    }})""",
     'linkedin': f"""tab('linkedin', async p => DRY ? {{ids: LI}} : ({js('linkedin_apply.js')})(p, {{ids: LI, deadline: DEADLINE, a: A}}))""",
 }
 

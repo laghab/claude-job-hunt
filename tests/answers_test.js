@@ -24,6 +24,10 @@ const L = [
   ['How many years of work experience do you have with AWS?', 'number', [], {}], ['How many years of experience do you currently have?', 'number', [], {}],
   ['Do you have experience with Docker?', 'radio', yn, {}], ['Do you have experience with Azure?', 'radio', yn, {}], ['Gender', 'select', ['Male', 'Female'], {}],
   ['Are you legally authorized to work in India?', 'radio', yn, {}], ['Will you require visa sponsorship?', 'radio', yn, {abroad: true}],
+  ['Have you worked on CI/CD pipelines, automated deployments, or infrastructure provisioning workflows?', 'radio', yn, {}],
+  ['Are you based in UAE?', 'radio', yn, {}], ['Are you currently based in India?', 'radio', yn, {}],
+  ['Have you worked with SAP before?', 'radio', yn, {}], ['Are you an Indian National?', 'radio', yn, {}],
+  ['Are you willing to work in 17,000 AED?', 'radio', yn, {}], ['Are you okay with 9000 AED per month?', 'radio', yn, {}],
 ];
 for (const q of L) out.linkedin[q[0] + (q[3].loc ? ' @' + q[3].loc : '')] = li(...q);
 const H = [['What is your current CTC?', 'Bengaluru'], ['Expected CTC?', 'Noida'], ['Expected CTC?', 'Pune'], ['What is your notice period?', ''], ['Are you willing to relocate?', ''],

@@ -18,5 +18,11 @@ The filter for every listing. Anything outside it is skipped.
 - Preference order:
 - Notice period:
 
+## Internships (optional; collect with `linkedin_collect.py --intern`)
+- Fields (can be wider than jobs: anything you can learn into):
+- Remote stipend floor:
+- On-site stipend floor / strong-brand exception:
+- Unpaid: never, or only at named prestigious orgs:
+
 ## Dealbreakers
-- Unpaid work, pay-to-train, deposits or bonds.
+- Unpaid jobs, pay-to-train or fee-based "training", deposits or bonds.

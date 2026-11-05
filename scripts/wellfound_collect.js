@@ -1,8 +1,14 @@
-// Wellfound collector: role pages (global + India), returns "id-slug || card text" for junior ops/support roles. Age/region/pay/exp are checked by wellfound_apply.js.
-async (page) => {
+// Wellfound collector: role pages from answers.md `search` (wellfound_roles or keywords, global + per country). Age/region/pay/exp are checked by wellfound_apply.js.
+async (page, ARGS = {}) => { // ARGS: {a (answers)}
+  const A = ARGS.a || /*ANSWERS*/{}; // form values from answers.md
+  const S = A.search || {}; // roles, keywords and places from answers.md (filled by the setup skill from the resume)
+  if (!(S.keywords || []).length || !S.role_regex) throw new Error('answers.md search block is empty: fill search.keywords / role_regex first');
+  const slug = k => k.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+  const ROLE = new RegExp(S.role_regex, 'i'), EXCL = new RegExp(S.exclude_regex || '$^', 'i');
+  const SENIOR = /senior|sr\.|\bsr\b|lead|manager|architect|principal|head|director|staff|\bvp\b/i;
   page.setDefaultTimeout(15000);
-  const roles = ['r/devops-engineer', 'r/site-reliability-engineer', 'r/cloud-engineer', 'r/systems-administrator', 'r/technical-support', 'r/platform-engineer', 'r/infrastructure-engineer',
-    'l/devops-engineer/india', 'l/cloud-engineer/india', 'l/site-reliability-engineer/india', 'l/systems-administrator/india', 'l/technical-support/india'];
+  const base = S.wellfound_roles || S.keywords.map(slug);
+  const roles = base.flatMap(r => ['r/' + r, ...(S.countries || []).map(c => `l/${r}/${slug(c)}`)]);
   const seen = new Map();
   for (const r of roles) {
     try {
@@ -16,9 +22,10 @@ async (page) => {
       for (const x of rows) if (!seen.has(x.href)) seen.set(x.href, x.text);
     } catch (e) {}
   }
-  const bad = /senior|sr\.|\bsr\b|lead|manager|principal|staff|head|director|architect|sales|marketing|recruit|designer|frontend|full.?stack|data scien|machine learning|\bqa\b|mainframe|android/i;
-  const want = /devops|sre|site reliability|cloud|infra|platform|system|linux|it support|support engineer|technical support|helpdesk|operations/i;
-  const foreign = t => /United States|Canada|Europe|\bEU\b|\bUK\b|United Kingdom|London|Texas|San Francisco|San Mateo|New York|Boston|Austin|Chicago|Washington|Australia|Sydney|Brazil|Argentina|Mexico|Egypt|Colombia|Ireland|Spain|Switzerland|Irvine|Houston|Toronto|AMER|EMEA/i.test(t) && !/India|Everywhere|Worldwide|Anywhere|APAC|Asia/i.test(t);
+  const bad = new RegExp([SENIOR.source, EXCL.source].join('|'), 'i');
+  const want = ROLE;
+  const okPlace = new RegExp((S.location_regex || (S.countries || []).join('|') || '.') + '|Everywhere|Worldwide|Anywhere', 'i');
+  const foreign = t => /United States|Canada|Europe|\bEU\b|\bUK\b|United Kingdom|India|Australia|Brazil|Germany|Singapore|UAE|Dubai|AMER|EMEA|APAC/i.test(t) && !okPlace.test(t);
   const old = /\b(\d+ )?(months?|years?) ago\b|[2-9] weeks ago/i;
   const out = [...seen.entries()]
     .filter(([h, t]) => want.test(t) && !bad.test(t.split('|')[0]) && !old.test(t) && !foreign(t))

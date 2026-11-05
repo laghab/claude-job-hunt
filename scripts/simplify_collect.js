@@ -10,8 +10,14 @@ async (page, ARGS = {}) => {
   const KNOWN = ARGS.known || new Set();          // ids already applied/skipped
   const MAXDAYS = ARGS.maxDays || 7;             // tier 1 = posted ≤ 2 days, tier 2 = ≤ MAXDAYS
   const MAXMIN = (ARGS.a || {}).max_min_years ?? 1;
-  const kws = ARGS.kws || ['devops', 'cloud engineer', 'site reliability', 'platform engineer', 'linux', 'system administrator',
-    'technical support', 'cloud support', 'noc', 'infrastructure engineer', 'build release', 'production support'];
+  const A = ARGS.a || {};
+  const S = A.search || {}; // roles, keywords and places from answers.md (filled by the setup skill from the resume)
+  if (!(S.keywords || []).length || !S.role_regex) throw new Error('answers.md search block is empty: fill search.keywords / role_regex first');
+  const slug = k => k.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+  const ROLE = new RegExp(S.role_regex, 'i'), EXCL = new RegExp(S.exclude_regex || '$^', 'i');
+  const SENIOR = /senior|sr\.|\bsr\b|lead|manager|architect|principal|head|director|staff|\bvp\b/i;
+  const PLACE = new RegExp(S.location_regex || (S.countries || []).join('|') || '$^', 'i');
+  const kws = ARGS.kws || S.keywords;
   const hits = new Map(); let batch = [];
   page.on('response', async r => {
     if (!r.url().includes('multi_search')) return;
@@ -36,10 +42,10 @@ async (page, ARGS = {}) => {
     } catch (e) {}
   }
   const now = Date.now() / 1000;
-  const OK = /India|United Arab Emirates|UAE|Dubai|Abu Dhabi/i;
+  const OK = PLACE;
   const REMOTE_ANY = /Anywhere|Worldwide|Global/i;
-  const want = /devops|sre|site reliability|cloud|infra|platform|system|linux|support|noc|network operations|operations engineer|build|release|reliability|production/i;
-  const bad = /senior|sr\.|\bsr\b|lead|manager|principal|staff|head|director|architect|sales|marketing|recruit|designer|front.?end|full.?stack|data scien|machine learning|\bqa\b|silicon|rtl|dft|analog|mainframe|android|ios\b|\bII\b|\bIII\b|\b[23]\b$/i;
+  const want = ROLE;
+  const bad = new RegExp([SENIOR.source, EXCL.source].join('|'), 'i');
   const skip = [], cand = [];
   for (const d of hits.values()) {
     const loc = [...(d.locations || []), ...(d.remote_locations || [])].join('; ');

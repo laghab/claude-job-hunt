@@ -23,9 +23,11 @@ Stop and ask whenever a step needs a login, a phone OTP, or a fact you don't hav
 Copy each file in `templates/` to the repo root if it doesn't exist yet. Confirm `git status` doesn't list them (they're gitignored).
 
 ## 3. Interview
-1. Read the resume (`pdftotext -layout resume/resume.pdf -`): contact, jobs with real dates and what was done, projects, skills, education.
-2. Fill `profile.md` and `answers.md` from it. Ask everything else in one batch: target roles and roles to avoid, locations and remote scope, pay floor per location, expected salary to state, current-salary policy, notice period, relocation, years to claim per skill, degree situation, the highest experience minimum to accept, dealbreakers.
-3. Show both files and apply the user's corrections.
+Assume nothing about the user's field, country or level until you have read their resume.
+1. Run the `resume` skill on whatever resume they give (PDF, DOCX or text): it becomes `resume/resume.tex`, gets built and checked, and any clear improvements go to the user for approval.
+2. Read the built resume: contact, jobs with real dates and what was done, projects, skills, education.
+3. Fill `profile.md` and `answers.md` from it, including the `search` block (keywords and role regex from the roles the resume really supports, countries and authorized places from where they live and can work). Ask everything else in one batch: target roles and roles to avoid, locations and remote scope, pay floor per location, expected salary to state, current-salary policy, notice period, relocation, years to claim per skill, degree situation, the highest experience minimum to accept, dealbreakers.
+4. Show both files, the `search` block in plain words ("I'll search for: …, in: …, skipping: …"), and apply the user's corrections.
 
 ## 4. Logins
 1. Ask which sites to use. Suggest the big boards for their country and remote boards if they want remote.

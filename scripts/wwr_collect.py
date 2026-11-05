@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
-# WeWorkRemotely collector (RSS, no browser). Prints junior ops/support roles open to
-# "Anywhere in the World" / India / Asia, posted in the last 7 days. WWR applies go to company
+# WeWorkRemotely collector (RSS, no browser). Prints roles matching answers.md search.role_regex open to
+# "Anywhere in the World" or your search.location_regex, posted in the last 7 days. WWR applies go to company
 # sites, so results feed the company-site queue (PLAYBOOK).
-import re, html, sys, urllib.request
+import re, html, os, sys, urllib.request, importlib.util
 from email.utils import parsedate_to_datetime
 from datetime import datetime, timezone, timedelta
 
-CATS = ['remote-devops-sysadmin-jobs', 'remote-customer-support-jobs', 'remote-back-end-programming-jobs']
-WANT = re.compile(r'devops|sre|site reliability|cloud|infra|platform|system|linux|it support|support (engineer|specialist)|technical support|helpdesk|noc|operations engineer|case resolution', re.I)
-BAD = re.compile(r'senior|sr\.|lead|manager|director|principal|staff|head|architect|sales|account (manager|executive)|recruit|marketing|designer|\.net|java\b|intern\b|french|german|arabic|spanish', re.I)
-OKREG = re.compile(r'Anywhere in the World|India|Asia|APAC', re.I)
+_spec = importlib.util.spec_from_file_location('answers', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'answers.py'))
+_ans = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_ans)
+S = _ans.load().get('search') or {}
+if not S.get('role_regex'):
+    sys.exit('answers.md search block is empty: fill search.role_regex first')
+# WWR category slugs, e.g. remote-devops-sysadmin-jobs, remote-back-end-programming-jobs, remote-customer-support-jobs
+CATS = S.get('wwr_categories') or ['remote-devops-sysadmin-jobs', 'remote-back-end-programming-jobs', 'remote-full-stack-programming-jobs', 'remote-customer-support-jobs']
+WANT = re.compile(S['role_regex'], re.I)
+BAD = re.compile('|'.join(x for x in [r'senior|sr\.|lead|manager|director|principal|staff|head|architect', S.get('exclude_regex')] if x), re.I)
+OKREG = re.compile('|'.join(x for x in ['Anywhere in the World', S.get('location_regex') or '|'.join(S.get('countries', []))] if x), re.I)
 cutoff = datetime.now(timezone.utc) - timedelta(days=7)
 
 for c in CATS:

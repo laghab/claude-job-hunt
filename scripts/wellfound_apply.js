@@ -18,7 +18,8 @@ async (page, ARGS = {}) => { // ARGS: {ids, deadline, max, a (answers)}
       const hires = (t.match(/Hires remotely in \| ([^|]+)/i) || [])[1] || '';
       const loc = (t.match(/Location \| ([^|]+)/i) || [])[1] || '';
       const visa = /Visa sponsorship \| Available/i.test(t);
-      const okRegion = /India|Everywhere|Worldwide|Asia|Anywhere/i.test(hires) || /India|Bengaluru|Bangalore|Delhi|Gurugram|Gurgaon|Noida|Mumbai|Pune|Hyderabad|Chennai|Kolkata|Ahmedabad|Jaipur|Kochi|Odisha|Dubai|Abu Dhabi|United Arab Emirates/i.test(loc);
+      const PLACE = new RegExp((A.search || {}).location_regex || ((A.search || {}).countries || []).join('|') || '$^', 'i');
+      const okRegion = PLACE.test(hires) || /Everywhere|Worldwide|Anywhere/i.test(hires) || PLACE.test(loc);
       if (!okRegion) { res.push(`${id} => skip: region (hires: ${hires || '-'}, loc: ${loc}) ${title}`); continue; }
       const pay = t.match(/₹([\d.,]+)(L|k)?\s*[–-]\s*₹([\d.,]+)(L|k)?/);
       if (pay) {
@@ -34,7 +35,7 @@ async (page, ARGS = {}) => { // ARGS: {ids, deadline, max, a (answers)}
       await page.waitForTimeout(3000);
       const dlg = page.locator('[role=dialog], .ReactModal__Content').last();
       if (/does not support the locations on your profile/i.test(await dlg.innerText().catch(()=>''))) {
-        const remoteJob = /remote/i.test(t.slice(0, 2500)) && /India|Everywhere|Worldwide|Asia|Anywhere/i.test(hires);
+        const remoteJob = /remote/i.test(t.slice(0, 2500)) && (PLACE.test(hires) || /Everywhere|Worldwide|Anywhere/i.test(hires));
         const action = remoteJob ? 'living_in' : 'relocate_to';
         const city = remoteJob ? A.city.split(',')[0] : (loc.split(/[,•·]/)[0] || '').trim();
         await dlg.evaluate((el, a) => el.querySelector(`[id="form-input--qualification.location.action--${a}"]`)?.click(), action);

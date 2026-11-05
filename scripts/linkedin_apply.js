@@ -25,6 +25,16 @@ async (page, ARGS = {}) => { // ARGS: {ids, deadline (ms epoch), a (answers)}
     }
     if (/start immediately|join immediately|immediate joiner|available to (start|join)|how soon (can )?you (can )?(start|join)|can you join|join (max\.? )?within/.test(s)) return opts.length ? {val: opts.find(o=>/^yes|immediate/i.test(o)) || 'Yes'} : {val: '0'};
     if (/notice/.test(s)) { const o = opts.find(o=>/immediate|0 days|15 days or less|less than 15/i.test(o)); return o ? {val:o} : {val:'0'}; }
+    const yn = ok => ({val: opts.find(o=>(ok ? /^yes/i : /^no/i).test(o)) || (ok ? 'Yes' : 'No')});
+    if (/have you (worked|built|done|set up|managed|had)/.test(s) && !/years/.test(s) && opts.length) { // past-experience yes/no: only topics listed in answers.md
+      if (A.experience_no && new RegExp('\\b(' + A.experience_no + ')\\b', 'i').test(s)) return yn(false);
+      if (A.experience_yes && new RegExp('\\b(' + A.experience_yes + ')\\b', 'i').test(s)) return yn(true);
+    }
+    { const m = s.match(/(?:willing|ok|okay|comfortable|agree|accept).{0,30}?(\d[\d,]{3,})\s*([a-z]{3})\b|\b([a-z]{3})\s*(\d[\d,]{3,})/); // "willing to work for 17,000 AED?" vs answers.md offer_floor_monthly
+      const cur = m && (m[2] || m[3]), floor = cur && (A.offer_floor_monthly || {})[cur];
+      if (floor && opts.length) { const n = +(m[1] || m[4]).replace(/,/g,''); return yn(n >= 100000 ? n >= floor * 12 : n >= floor); } }
+    if (A.nationality && /are you an? \w+ (national|citizen)|is your nationality|nationality is/.test(s) && opts.length) return yn(new RegExp('\\b' + A.nationality + '\\b', 'i').test(s));
+    if (/are you (currently )?(based|located|living|residing) in/.test(s) && opts.length) { const home = [A.country, ...String(A.city).split(',')].map(x => x.trim()).filter(Boolean); return yn(home.some(h => s.includes(h.toLowerCase()))); } // true answer; relocation is asked separately
     if (/have you (done|worked|had)|before\?|previous(ly)?|in the past/.test(s) && !/years/.test(s)) return {stop:'past-experience question'};
     if (/remote|work from home|wfh/.test(s) && /comfortable|willing|open to|ok with|okay with|able to|prefer/.test(s)) return {val: opts.find(o=>/^yes/i.test(o)) || 'Yes'}; // remote is his top preference
     if (/relocat|commut|travel|on-?site|onsite|work from office|hybrid|shift|night/.test(s) && /willing|comfortable|open to|ok with|okay with|able to|can you|are you|ready to|relocat/.test(s)) return {val:'Yes'};
@@ -68,7 +78,7 @@ async (page, ARGS = {}) => { // ARGS: {ids, deadline (ms epoch), a (answers)}
     if (await stale.count()) { await stale.getByRole('button', {name: 'Dismiss'}).click().catch(()=>{}); await page.waitForTimeout(800); await page.getByRole('button', {name: /Discard/}).first().click().catch(()=>{}); await page.waitForTimeout(800); }
     const main = (await page.locator('main').innerText().catch(()=>'')).slice(0, 400);
     const loc = (main.split('\n').find(l => /·/.test(l)) || '');
-    const ctx = {loc, abroad: !/India|Mumbai|Delhi|Bengaluru|Bangalore|Hyderabad|Pune|Chennai|Kolkata|Gurugram|Gurgaon|Noida|Ahmedabad|Kochi|Jaipur|Chandigarh|Indore|Coimbatore|Mohali|Trivandrum|Thiruvananthapuram|Nagpur|Bhubaneswar|Lucknow/i.test(loc)};
+    const ctx = {loc, abroad: !new RegExp((A.search || {}).authorized_regex || A.country || '$^', 'i').test(loc)}; // abroad = outside the places you may work without sponsorship
     if (/Applied \d|Application submitted/i.test(main)) { res.push(id+' => already'); continue; }
     const full = await page.locator('main').innerText().catch(()=>'');
     // tier 1 = fresh (<48h), non-reposted, <100 applicants; the rest wait for a TIER2 run
@@ -82,9 +92,10 @@ async (page, ARGS = {}) => { // ARGS: {ids, deadline (ms epoch), a (answers)}
     const yrs = req ? [...req[0].matchAll(/(\d+)\+? years/g)].map(m => +m[1]) : [];
     if (yrs.some(y => y > A.max_min_years))
     { res.push(id+' => skip: poster requires '+Math.max(...yrs)+'+ yrs'); continue; }
-    const btn = page.locator('button:has-text("Easy Apply"), a:has-text("Easy Apply")').first();
+    // exact-name match only: sidebar job cards are links whose text also contains "Easy Apply"
+    const btn = page.getByRole('button', {name: /^Easy Apply( to .*)?$/}).or(page.getByRole('link', {name: /^Easy Apply( to .*)?$/})).first();
     if (!(await btn.count())) { res.push(id+' => skip: no Easy Apply'); continue; }
-    await btn.click(); await page.waitForTimeout(3000);
+    await btn.click({timeout: 4000}).catch(() => btn.evaluate(b => b.click())); await page.waitForTimeout(3000);
     const dlg = page.locator('dialog[open], [role=dialog]').filter({hasText: /Apply to /}).first();
     let outcome = '';
     for (let step = 0; step < 10 && !outcome; step++) {
@@ -99,8 +110,10 @@ async (page, ARGS = {}) => { // ARGS: {ids, deadline (ms epoch), a (answers)}
         }
         for (const s of el.querySelectorAll('select')) {
           const cur = s.options[s.selectedIndex]?.text || '';
-          if (cur && !/select an option/i.test(cur)) continue;
-          out.push({kind: 'select', id: s.id, label: labelOf(s), opts: [...s.options].map(o => o.text.trim()).filter(t => t && !/select an option/i.test(t))});
+          const opts = [...s.options].map(o => o.text.trim()).filter(t => t && !/select an option/i.test(t));
+          const phone = opts.includes(A.phone_country) && !labelOf(s);
+          if (cur && !/select an option/i.test(cur) && !(phone && cur !== A.phone_country)) continue;
+          out.push({kind: 'select', id: s.id, label: labelOf(s) || (phone ? 'Phone country code' : ''), opts});
         }
         const groups = {};
         for (const r of el.querySelectorAll('input[type=radio]')) (groups[r.name] ||= []).push(r);
@@ -116,8 +129,17 @@ async (page, ARGS = {}) => { // ARGS: {ids, deadline (ms epoch), a (answers)}
         const a = ans(f.label, f.kind, f.opts || [], ctx);
         if (a.stop) { outcome = `STOP(${a.stop}): ${f.label} [${(f.opts||[]).join('/')}]`; break; }
         if (f.kind === 'text' || f.kind === 'number') {
-          await dlg.locator(`[id="${f.id}"]`).fill(a.val);
-          if (/city|location/i.test(f.label)) { await page.waitForTimeout(600); const o = page.getByRole('option').first(); if (await o.count() && (await o.innerText()).toLowerCase().includes(A.city.split(',')[0].toLowerCase())) await o.click(); }
+          const box = dlg.locator(`[id="${f.id}"]`);
+          await box.fill('');
+          await box.pressSequentially(String(a.val), {delay: 40});
+          if (/city|location/i.test(f.label)) {
+            await page.waitForTimeout(900);
+            const city = A.city.split(',')[0];
+            const o = page.locator('[role=option]').filter({hasText: new RegExp('^' + city, 'i')}).first();
+            if (await o.count()) await o.click().catch(()=>{});
+            await page.waitForTimeout(500);
+            if (!(await box.inputValue().catch(()=>'' )).trim()) { outcome = 'STOP(city type-ahead not selected): ' + f.label; break; }
+          }
         } else {
           let pick = f.opts.find(o => o.toLowerCase() === String(a.val).toLowerCase());
           if (!pick && /^\d+$/.test(String(a.val))) pick = f.opts.find(o => new RegExp('^' + a.val + ' years?$', 'i').test(o.trim()));
